@@ -49,4 +49,29 @@ async function forwardMedia(jid, mediaBuffer, mimetype, caption) {
   logMessage('bot', jid, caption || '[media]', null, 'outgoing');
 }
 
-module.exports = { sendText, sendImage, forwardMedia };
+/**
+ * Send a voice message (audio buffer as ptt)
+ */
+async function sendVoice(jid, audioBuffer) {
+  const sock = getSock();
+  if (!sock) throw new Error('WhatsApp not connected');
+
+  await sock.sendMessage(jid, {
+    audio: audioBuffer,
+    mimetype: 'audio/ogg; codecs=opus',
+    ptt: true, // Push-to-talk = voice note
+  });
+  logMessage('bot', jid, '[voice]', null, 'outgoing');
+}
+
+/**
+ * Send text + voice note together
+ */
+async function sendTextAndVoice(jid, text, audioBuffer) {
+  await sendText(jid, text);
+  if (audioBuffer) {
+    await sendVoice(jid, audioBuffer);
+  }
+}
+
+module.exports = { sendText, sendImage, forwardMedia, sendVoice, sendTextAndVoice };

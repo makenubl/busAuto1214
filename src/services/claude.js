@@ -229,10 +229,98 @@ Respond with ONLY a JSON object:
   }
 }
 
+/**
+ * Smart conversational handler for dealer — replaces rigid intent system.
+ * Claude gets full history + system state and decides what to do.
+ */
+async function handleDealerConversation(text, chatHistory, systemState) {
+  const historyText = chatHistory.length > 0
+    ? chatHistory.map(m => {
+        const sender = m.direction === 'incoming' ? 'ڈیلر' : BOT_NAME;
+        return `${sender}: ${m.body || '[میڈیا]'}`;
+      }).join('\n')
+    : 'نئی گفتگو';
+
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 800,
+    messages: [
+      {
+        role: 'user',
+        content: `You are ${BOT_NAME} (مختار), the smart munshi (assistant) of ${DEALER_NAME} from ${COMPANY_NAME}. You are a fully capable AI assistant for a bus dealer on WhatsApp.
+
+You understand Urdu, Punjabi, Roman Urdu, and English. Always respond IN URDU script.
+
+== سسٹم کی حالت ==
+ایکٹو ریکوئسٹ: ${systemState.activeRequest ? `#${systemState.activeRequest.id} — ${systemState.activeRequest.parsed}` : 'کوئی نہیں'}
+ڈرافٹ ریکوئسٹ: ${systemState.draftRequest ? `#${systemState.draftRequest.id} — ${systemState.draftRequest.parsed}` : 'کوئی نہیں'}
+کل سیلرز: ${systemState.sellerCount}
+کل ڈیلرز: ${systemState.dealerCount}
+ایکٹو ریکوئسٹ کے جوابات: ${systemState.responseCount}
+
+== پوری گفتگو ==
+${historyText}
+
+== نیا پیغام ==
+ڈیلر: "${text}"
+
+You are a smart assistant. Understand what the dealer wants and respond naturally. You can perform these actions:
+
+Actions available:
+- "greeting" — just greeting, no action needed
+- "new_request" — dealer wants to find buses (extract: quantity, type, route, budget, condition, brand)
+- "confirm" — dealer is confirming a pending draft request to broadcast
+- "cancel" — dealer is canceling a pending request
+- "broadcast" — send requirement to sellers
+- "check_results" — dealer wants to see responses from sellers
+- "detail" — dealer wants details of a specific seller response (extract number)
+- "add_seller" — add seller contact (extract: phone, name)
+- "remove_seller" — remove seller (extract: phone)
+- "list_sellers" — show seller list
+- "add_dealer" — add a new dealer (extract: phone)
+- "list_dealers" — show dealer list
+- "close_request" — close the active request
+- "help" — show available commands
+- "chat" — general conversation, advice, or questions — no system action needed
+
+Respond with ONLY a JSON object:
+{
+  "response": "<your natural Urdu response — conversational, warm, like a real munshi talking to his boss>",
+  "action": "<action from list above>",
+  "actionData": {
+    "phone": "<if adding seller/dealer>",
+    "name": "<if adding seller>",
+    "quantity": <if new_request>,
+    "type": "<if new_request>",
+    "route": "<if new_request>",
+    "budget": "<if new_request>",
+    "condition": "<if new_request>",
+    "brand": "<if new_request>",
+    "detailNumber": <if requesting detail of specific seller>,
+    "other": "<any other relevant data>"
+  }
+}`,
+      },
+    ],
+  });
+
+  const content = response.content[0].text.trim();
+  try {
+    return JSON.parse(content);
+  } catch {
+    return {
+      response: 'جی سردار صاحب، بتائیں کیا خدمت کر سکتا ہوں؟',
+      action: 'chat',
+      actionData: {},
+    };
+  }
+}
+
 module.exports = {
   parseRequirement,
   detectIntent,
   generateBroadcastMessage,
   summarizeResponses,
   handlePublicMessage,
+  handleDealerConversation,
 };

@@ -95,6 +95,56 @@ function getResponsesForRequest(requestId) {
   ).all(requestId);
 }
 
+// --- Dealers ---
+
+function addDealer(jid, name) {
+  const db = getDb();
+  return db.prepare('INSERT OR IGNORE INTO dealers (jid, name) VALUES (?, ?)').run(jid, name);
+}
+
+function removeDealer(jid) {
+  const db = getDb();
+  return db.prepare('DELETE FROM dealers WHERE jid = ?').run(jid);
+}
+
+function isDealer(jid) {
+  const db = getDb();
+  return !!db.prepare('SELECT 1 FROM dealers WHERE jid = ?').get(jid);
+}
+
+function getAllDealers() {
+  const db = getDb();
+  return db.prepare('SELECT * FROM dealers ORDER BY added_at').all();
+}
+
+// --- Dealer Invites ---
+
+function createInvite(createdBy) {
+  const db = getDb();
+  const code = 'JOIN-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+  db.prepare('INSERT INTO dealer_invites (code, created_by, expires_at) VALUES (?, ?, ?)').run(code, createdBy, expiresAt);
+  return code;
+}
+
+function useInvite(code) {
+  const db = getDb();
+  const invite = db.prepare("SELECT * FROM dealer_invites WHERE code = ? AND used = 0 AND expires_at > datetime('now')").get(code);
+  if (invite) {
+    db.prepare('UPDATE dealer_invites SET used = 1 WHERE code = ?').run(code);
+    return invite;
+  }
+  return null;
+}
+
+// --- Seed Dealers from .env ---
+
+function seedDealersFromEnv(dealerJids) {
+  for (const jid of dealerJids) {
+    addDealer(jid, null);
+  }
+}
+
 // --- Messages Log ---
 
 function logMessage(sender, recipient, body, mediaUrl, direction) {
@@ -119,4 +169,11 @@ module.exports = {
   addResponse,
   getResponsesForRequest,
   logMessage,
+  addDealer,
+  removeDealer,
+  isDealer,
+  getAllDealers,
+  createInvite,
+  useInvite,
+  seedDealersFromEnv,
 };

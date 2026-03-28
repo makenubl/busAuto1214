@@ -1,6 +1,6 @@
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const { sendText } = require('../bot/sender');
-const { getActiveRequest, addResponse, getContactByPhone } = require('../db/database');
+const { getActiveRequest, addResponse, getContactByPhone, getAllDealers } = require('../db/database');
 const { formatPhoneDisplay } = require('../utils/helpers');
 const config = require('../config');
 const fs = require('fs');
@@ -29,17 +29,20 @@ async function handleSellerMessage(msg, jid, text) {
   // Acknowledge to seller
   await sendText(jid, '✅ Thank you! Your response has been recorded. We will get back to you soon.');
 
-  // Notify dealer
+  // Notify all dealers
   const contact = getContactByPhone(jid);
   const sellerName = contact?.name || formatPhoneDisplay(jid);
   const mediaNote = mediaUrls.length > 0 ? ` [${mediaUrls.length} photo/video]` : '';
 
-  await sendText(config.primaryDealer,
-    `📩 *New response for Request #${active.id}*\n` +
-    `From: ${sellerName}\n` +
-    `${text || '(media only)'}${mediaNote}\n\n` +
-    `Send "results" to see all responses.`
-  );
+  const dealers = getAllDealers();
+  for (const dealer of dealers) {
+    await sendText(dealer.jid,
+      `📩 *New response for Request #${active.id}*\n` +
+      `From: ${sellerName}\n` +
+      `${text || '(media only)'}${mediaNote}\n\n` +
+      `Send "results" to see all responses.`
+    );
+  }
 }
 
 /**

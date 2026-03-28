@@ -5,6 +5,7 @@ const {
   createRequest, getDraftRequest, getActiveRequest, closeRequest,
   addContact, removeContact, getAllContacts,
   getResponsesForRequest,
+  createInvite, getAllDealers, removeDealer,
 } = require('../db/database');
 const { normalizePhone, formatPhoneDisplay, isConfirmation, isNegation } = require('../utils/helpers');
 const config = require('../config');
@@ -47,6 +48,12 @@ async function handleDealerMessage(jid, text) {
       return await handleCloseRequest(jid);
     case 'detail':
       return await handleDetail(jid, data);
+    case 'invite_dealer':
+      return await handleInviteDealer(jid);
+    case 'list_dealers':
+      return await handleListDealers(jid);
+    case 'remove_dealer':
+      return await handleRemoveDealer(jid, data);
     case 'help':
       return await handleHelp(jid);
     default:
@@ -235,6 +242,48 @@ async function handleDetail(jid, data) {
   }
 }
 
+async function handleInviteDealer(jid) {
+  const code = createInvite(jid);
+  await sendText(jid,
+    `🔑 *Invite Code: ${code}*\n\n` +
+    `Share this code with the new dealer. They should send it to this bot number within 1 hour.\n\n` +
+    `They just need to send the code (e.g., "${code}") as a message to this number.`
+  );
+}
+
+async function handleListDealers(jid) {
+  const dealers = getAllDealers();
+  const list = dealers.map((d, i) =>
+    `${i + 1}. ${d.name || 'Unknown'} — ${d.jid}`
+  ).join('\n');
+  await sendText(jid, `👤 *Dealers (${dealers.length}):*\n\n${list}`);
+}
+
+async function handleRemoveDealer(jid, data) {
+  // Prevent removing yourself
+  if (!data) {
+    await sendText(jid, '❓ Send: remove dealer <number from list>\nUse "list dealers" first.');
+    return;
+  }
+
+  const dealers = getAllDealers();
+  const index = parseInt(data) - 1;
+
+  if (isNaN(index) || index < 0 || index >= dealers.length) {
+    await sendText(jid, `Invalid number. Choose 1 to ${dealers.length}.`);
+    return;
+  }
+
+  const target = dealers[index];
+  if (target.jid === jid) {
+    await sendText(jid, '❌ You cannot remove yourself.');
+    return;
+  }
+
+  removeDealer(target.jid);
+  await sendText(jid, `✅ Removed dealer: ${target.name || target.jid}`);
+}
+
 async function handleHelp(jid) {
   await sendText(jid,
     `🚌 *Bus Dealer Assistant*\n\n` +
@@ -248,6 +297,8 @@ async function handleHelp(jid) {
     `• *add seller 03xx Name* → Add a seller\n` +
     `• *list sellers* → See all sellers\n` +
     `• *remove 03xx* → Remove a seller\n` +
+    `• *invite dealer* → Generate code to add a new dealer\n` +
+    `• *list dealers* → See all dealers\n` +
     `• *help* → Show this message`
   );
 }

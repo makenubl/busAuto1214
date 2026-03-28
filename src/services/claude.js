@@ -67,6 +67,9 @@ Possible intents:
 - "list_sellers" — dealer wants to see seller list
 - "remove_seller" — dealer wants to remove a seller
 - "close_request" — dealer wants to close/end the current request
+- "invite_dealer" — dealer wants to invite/add a new dealer (add dealer, invite dealer)
+- "list_dealers" — dealer wants to see list of dealers
+- "remove_dealer" — dealer wants to remove a dealer
 - "help" — dealer wants help or info about commands
 - "detail" — dealer wants full details of a specific seller response (e.g., "1" or "2")
 - "unknown" — none of the above

@@ -26,6 +26,20 @@ CREATE TABLE IF NOT EXISTS responses (
   FOREIGN KEY (request_id) REFERENCES requests(id)
 );
 
+CREATE TABLE IF NOT EXISTS dealers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  jid TEXT UNIQUE NOT NULL,
+  name TEXT,
+  added_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS dealer_invites (
+  code TEXT PRIMARY KEY,
+  created_by TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used INTEGER DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS messages_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   sender TEXT,

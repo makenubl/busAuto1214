@@ -1,8 +1,8 @@
 const { handleDealerMessage } = require('../handlers/dealer');
 const { handleSellerMessage } = require('../handlers/seller');
 const { transcribeVoiceMessage } = require('../services/whisper');
-const { logMessage } = require('../db/database');
-const config = require('../config');
+const { logMessage, isDealer, useInvite, addDealer } = require('../db/database');
+const { sendText } = require('./sender');
 
 /**
  * Extract text content from a message.
@@ -39,7 +39,6 @@ async function routeMessage(msg) {
       text = await transcribeVoiceMessage(msg);
     } catch (err) {
       console.error('Voice transcription failed:', err.message);
-      const { sendText } = require('../bot/sender');
       await sendText(jid, '❌ Could not transcribe voice message. Please send as text.');
       return;
     }
@@ -47,28 +46,43 @@ async function routeMessage(msg) {
 
   // No text content and not a voice message → might be media only
   if (!text && !isVoiceMessage(msg)) {
-    // For sellers with media-only messages, still handle them
-    if (!config.isDealer(jid)) {
+    if (!isDealer(jid)) {
       const messageType = Object.keys(msg.message || {})[0];
       const mediaTypes = ['imageMessage', 'videoMessage', 'documentMessage'];
       if (mediaTypes.includes(messageType)) {
-        text = '';  // Allow seller handler to process the media
+        text = '';
       } else {
-        return; // Ignore other non-text messages
+        return;
       }
     } else {
       return;
     }
   }
 
-  // Route to appropriate handler
-  if (config.isDealer(jid)) {
+  // Check if sender is a dealer (from database)
+  if (isDealer(jid)) {
     console.log(`👤 Dealer: "${text}"`);
     await handleDealerMessage(jid, text);
-  } else {
-    console.log(`🏢 Seller (${jid}): "${text || '[media]'}"`);
-    await handleSellerMessage(msg, jid, text);
+    return;
   }
+
+  // Check if message is an invite code (JOIN-XXXX)
+  if (text && /^JOIN-[A-Z0-9]{4}$/i.test(text.trim())) {
+    const invite = useInvite(text.trim().toUpperCase());
+    if (invite) {
+      addDealer(jid, null);
+      console.log(`✅ New dealer added via invite: ${jid}`);
+      await sendText(jid, '✅ Welcome! You are now a dealer. Send "help" to see available commands.');
+      return;
+    } else {
+      await sendText(jid, '❌ Invalid or expired invite code.');
+      return;
+    }
+  }
+
+  // Otherwise, treat as seller
+  console.log(`🏢 Seller (${jid}): "${text || '[media]'}"`);
+  await handleSellerMessage(msg, jid, text);
 }
 
 module.exports = { routeMessage };

@@ -5,9 +5,10 @@ const {
   createRequest, getDraftRequest, getActiveRequest, closeRequest,
   addContact, removeContact, getAllContacts,
   getResponsesForRequest,
-  createInvite, getAllDealers, removeDealer,
+  createInvite, getAllDealers, removeDealer, addDealer,
 } = require('../db/database');
 const { normalizePhone, formatPhoneDisplay, isConfirmation, isNegation } = require('../utils/helpers');
+const { getSock } = require('../bot/connection');
 const config = require('../config');
 
 /**
@@ -49,7 +50,7 @@ async function handleDealerMessage(jid, text) {
     case 'detail':
       return await handleDetail(jid, data);
     case 'invite_dealer':
-      return await handleInviteDealer(jid);
+      return await handleInviteDealer(jid, text, data);
     case 'list_dealers':
       return await handleListDealers(jid);
     case 'remove_dealer':
@@ -242,13 +243,39 @@ async function handleDetail(jid, data) {
   }
 }
 
-async function handleInviteDealer(jid) {
-  const code = createInvite(jid);
-  await sendText(jid,
-    `🔑 *Invite Code: ${code}*\n\n` +
-    `Share this code with the new dealer. They should send it to this bot number within 1 hour.\n\n` +
-    `They just need to send the code (e.g., "${code}") as a message to this number.`
-  );
+async function handleInviteDealer(jid, text, data) {
+  // Extract phone number from message or data
+  const source = data || text;
+  const match = source.match(/(\+?[\d]{10,13})/);
+
+  if (!match) {
+    await sendText(jid, '❓ Format: add dealer 03001234567\nExample: add dealer 03020556472');
+    return;
+  }
+
+  const phone = normalizePhone(match[1]);
+  const sock = getSock();
+
+  try {
+    // Look up the actual WhatsApp JID for this number
+    const [result] = await sock.onWhatsApp(phone.replace('@s.whatsapp.net', ''));
+
+    if (!result || !result.exists) {
+      await sendText(jid, `❌ ${formatPhoneDisplay(phone)} is not on WhatsApp.`);
+      return;
+    }
+
+    const dealerJid = result.jid;
+    addDealer(dealerJid, null);
+
+    // Notify the new dealer
+    await sendText(dealerJid, '✅ You have been added as a dealer for Bus Dealer Assistant. Send "help" to see available commands.');
+
+    await sendText(jid, `✅ Added dealer: ${formatPhoneDisplay(phone)}`);
+  } catch (err) {
+    console.error('Failed to add dealer:', err.message);
+    await sendText(jid, `❌ Failed to add dealer. Error: ${err.message}`);
+  }
 }
 
 async function handleListDealers(jid) {
@@ -297,7 +324,7 @@ async function handleHelp(jid) {
     `• *add seller 03xx Name* → Add a seller\n` +
     `• *list sellers* → See all sellers\n` +
     `• *remove 03xx* → Remove a seller\n` +
-    `• *invite dealer* → Generate code to add a new dealer\n` +
+    `• *add dealer 03xx* → Add a new dealer\n` +
     `• *list dealers* → See all dealers\n` +
     `• *help* → Show this message`
   );

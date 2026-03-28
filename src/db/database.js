@@ -95,6 +95,47 @@ function getResponsesForRequest(requestId) {
   ).all(requestId);
 }
 
+// --- Contact Profiles ---
+
+function getProfile(jid) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM contact_profiles WHERE jid = ?').get(jid);
+}
+
+function upsertProfile(jid, updates) {
+  const db = getDb();
+  const existing = getProfile(jid);
+  if (existing) {
+    const fields = [];
+    const values = [];
+    if (updates.name) { fields.push('name = ?'); values.push(updates.name); }
+    if (updates.phone_display) { fields.push('phone_display = ?'); values.push(updates.phone_display); }
+    if (updates.role) { fields.push('role = ?'); values.push(updates.role); }
+    if (updates.summary) { fields.push('summary = ?'); values.push(updates.summary); }
+    if (updates.tags) { fields.push('tags = ?'); values.push(JSON.stringify(updates.tags)); }
+    fields.push("last_interaction = datetime('now')");
+    fields.push('total_messages = total_messages + 1');
+    values.push(jid);
+    db.prepare(`UPDATE contact_profiles SET ${fields.join(', ')} WHERE jid = ?`).run(...values);
+  } else {
+    db.prepare(
+      'INSERT INTO contact_profiles (jid, name, phone_display, role, summary, tags) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(jid, updates.name || null, updates.phone_display || null, updates.role || 'unknown', updates.summary || null, JSON.stringify(updates.tags || []));
+  }
+}
+
+function getChatHistory(jid, limit = 20) {
+  const db = getDb();
+  return db.prepare(
+    'SELECT sender, body, direction, timestamp FROM messages_log WHERE sender = ? OR recipient = ? ORDER BY timestamp DESC LIMIT ?'
+  ).all(jid, jid, limit).reverse();
+}
+
+function getAllProfiles() {
+  const db = getDb();
+  return db.prepare('SELECT * FROM contact_profiles ORDER BY last_interaction DESC').all();
+}
+
 // --- Dealers ---
 
 function addDealer(jid, name) {
@@ -179,6 +220,10 @@ module.exports = {
   addResponse,
   getResponsesForRequest,
   logMessage,
+  getProfile,
+  upsertProfile,
+  getChatHistory,
+  getAllProfiles,
   addDealer,
   addDealerAlias,
   removeDealer,

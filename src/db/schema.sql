@@ -40,6 +40,17 @@ CREATE TABLE IF NOT EXISTS dealer_invites (
   used INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS contact_profiles (
+  jid TEXT PRIMARY KEY,
+  name TEXT,
+  phone_display TEXT,
+  role TEXT DEFAULT 'unknown',
+  summary TEXT,
+  tags TEXT DEFAULT '[]',
+  last_interaction TEXT DEFAULT (datetime('now')),
+  total_messages INTEGER DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS messages_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   sender TEXT,

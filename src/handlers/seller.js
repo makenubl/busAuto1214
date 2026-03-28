@@ -1,6 +1,6 @@
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const { sendText } = require('../bot/sender');
-const { getActiveRequest, addResponse, getContactByPhone, getAllDealers } = require('../db/database');
+const { getActiveRequest, addResponse, getContactByPhone, getAllDealers, getProfile, upsertProfile, getChatHistory } = require('../db/database');
 const { formatPhoneDisplay } = require('../utils/helpers');
 const { handlePublicMessage } = require('../services/claude');
 const fs = require('fs');
@@ -34,9 +34,24 @@ async function handleSellerMessage(msg, jid, text) {
     return;
   }
 
-  // For anyone else (buyers, sellers, unknown) — use Claude to respond smartly
-  const reply = await handlePublicMessage(text, jid, formatPhoneDisplay(jid));
+  // For anyone else (buyers, sellers, unknown) — use Claude with history + profile
+  const chatHistory = getChatHistory(jid, 20);
+  const profile = getProfile(jid);
+  const displayPhone = formatPhoneDisplay(jid);
+
+  const reply = await handlePublicMessage(text, jid, displayPhone, chatHistory, profile);
   await sendText(jid, reply.response);
+
+  // Update contact profile with AI-generated insights
+  if (reply.profileUpdate) {
+    upsertProfile(jid, {
+      ...reply.profileUpdate,
+      phone_display: displayPhone,
+    });
+  } else {
+    // At minimum update last interaction
+    upsertProfile(jid, { phone_display: displayPhone });
+  }
 
   // Notify dealers if it's an important message (buying/selling inquiry)
   if (reply.notifyDealer) {

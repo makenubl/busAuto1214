@@ -10,6 +10,7 @@ const {
   getChatHistory, getProfile, upsertProfile, getAllProfiles,
   getAvailableInventory, searchInventory, getInventoryById, getInventoryByRegNumber, updateInventoryStatus,
   createDeal, updateDealStatus, addDealNote, getActiveDeals, getDealById, getTodaySummary,
+  createReminder, getPendingReminders,
 } = require('../db/database');
 const { normalizePhone, formatPhoneDisplay } = require('../utils/helpers');
 const { getSock } = require('../bot/connection');
@@ -376,6 +377,27 @@ async function executeAction(jid, action, data, response) {
         // Save note by name — search profiles
         // For now just log it
         console.log(`📝 Note about ${data.name}: ${data.noteText}`);
+      }
+      break;
+    }
+
+    case 'set_reminder': {
+      if (data.reminderText && data.remindAt) {
+        const reminderId = createReminder(jid, data.reminderText, data.remindAt);
+        console.log(`⏰ Reminder #${reminderId} set for ${data.remindAt}`);
+      }
+      break;
+    }
+
+    case 'show_reminders': {
+      const reminders = getPendingReminders(jid);
+      if (reminders.length > 0) {
+        let msg = `⏰ *آنے والی یاد دہانیاں (${reminders.length}):*\n\n`;
+        reminders.forEach((r, i) => {
+          const time = new Date(r.remind_at).toLocaleString('ur-PK', { timeZone: 'Asia/Karachi' });
+          msg += `${i + 1}. ${time}\n   ${r.reminder_text}\n\n`;
+        });
+        await sendText(jid, msg);
       }
       break;
     }

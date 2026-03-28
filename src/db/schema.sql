@@ -53,6 +53,15 @@ CREATE TABLE IF NOT EXISTS inventory (
   updated_at TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS reminders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  dealer_jid TEXT NOT NULL,
+  reminder_text TEXT NOT NULL,
+  remind_at TEXT NOT NULL,
+  sent INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS deals (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   buyer_jid TEXT,

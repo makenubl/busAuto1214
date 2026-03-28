@@ -268,6 +268,7 @@ You understand Urdu, Punjabi, Roman Urdu, and English. Always respond IN URDU sc
 You address the dealer respectfully as "سردار صاحب" or "جناب".
 
 == سسٹم کی حالت ==
+موجودہ وقت: ${new Date().toLocaleString('ur-PK', { timeZone: 'Asia/Karachi' })} (Pakistan Time)
 ایکٹو ریکوئسٹ: ${systemState.activeRequest ? `#${systemState.activeRequest.id} — ${systemState.activeRequest.parsed}` : 'کوئی نہیں'}
 ڈرافٹ ریکوئسٹ: ${systemState.draftRequest ? `#${systemState.draftRequest.id} — ${systemState.draftRequest.parsed}` : 'کوئی نہیں'}
 کل سیلرز: ${systemState.sellerCount}
@@ -330,6 +331,8 @@ Actions available:
 - "update_deal" — update deal status (extract: dealId, newStatus, note)
 - "show_deals" — show active deals
 - "summary" — show daily summary/status
+- "set_reminder" — dealer wants a reminder (extract: reminderText, remindAt as ISO datetime string e.g. "2026-03-30T09:00:00")
+- "show_reminders" — show pending reminders
 - "save_note" — save a note about someone (extract: phone or name, noteText — saved in their profile)
 - "help" — show available commands
 - "chat" — general conversation, advice, or questions — no action needed
@@ -362,6 +365,8 @@ Respond with ONLY a JSON object:
     "agreed_price": "<price>",
     "newStatus": "<new deal status>",
     "note": "<note text>",
+    "reminderText": "<what to remind about>",
+    "remindAt": "<ISO datetime for reminder e.g. 2026-03-30T09:00:00>",
     "noteText": "<note to save about someone>",
     "other": "<any other>"
   }

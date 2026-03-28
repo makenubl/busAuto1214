@@ -1,7 +1,8 @@
 require('dotenv').config();
 const { connectToWhatsApp, onMessage } = require('./bot/connection');
 const { routeMessage } = require('./bot/messageHandler');
-const { getDb, seedDealersFromEnv, getAllDealers } = require('./db/database');
+const { getDb, seedDealersFromEnv, getAllDealers, getDueReminders, markReminderSent } = require('./db/database');
+const { sendText } = require('./bot/sender');
 const config = require('./config');
 
 async function main() {
@@ -23,6 +24,20 @@ async function main() {
 
   // Set up message handler
   onMessage(routeMessage);
+
+  // Check reminders every 60 seconds
+  setInterval(async () => {
+    try {
+      const dueReminders = getDueReminders();
+      for (const reminder of dueReminders) {
+        await sendText(reminder.dealer_jid, `⏰ *یاد دہانی:*\n\n${reminder.reminder_text}`);
+        markReminderSent(reminder.id);
+        console.log(`⏰ Reminder #${reminder.id} sent`);
+      }
+    } catch (err) {
+      console.error('Reminder check failed:', err.message);
+    }
+  }, 60000);
 
   console.log('\n🟢 Bot is running. Waiting for messages...\n');
 }

@@ -95,6 +95,31 @@ function getResponsesForRequest(requestId) {
   ).all(requestId);
 }
 
+// --- Reminders ---
+
+function createReminder(dealerJid, reminderText, remindAt) {
+  const db = getDb();
+  const result = db.prepare(
+    'INSERT INTO reminders (dealer_jid, reminder_text, remind_at) VALUES (?, ?, ?)'
+  ).run(dealerJid, reminderText, remindAt);
+  return result.lastInsertRowid;
+}
+
+function getDueReminders() {
+  const db = getDb();
+  return db.prepare("SELECT * FROM reminders WHERE sent = 0 AND remind_at <= datetime('now')").all();
+}
+
+function markReminderSent(id) {
+  const db = getDb();
+  return db.prepare('UPDATE reminders SET sent = 1 WHERE id = ?').run(id);
+}
+
+function getPendingReminders(dealerJid) {
+  const db = getDb();
+  return db.prepare("SELECT * FROM reminders WHERE dealer_jid = ? AND sent = 0 ORDER BY remind_at").all(dealerJid);
+}
+
 // --- Deals ---
 
 function createDeal(data) {
@@ -331,6 +356,10 @@ module.exports = {
   addResponse,
   getResponsesForRequest,
   logMessage,
+  createReminder,
+  getDueReminders,
+  markReminderSent,
+  getPendingReminders,
   createDeal,
   updateDealStatus,
   addDealNote,

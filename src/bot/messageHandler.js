@@ -48,7 +48,7 @@ async function routeMessage(msg) {
   // No text content and not a voice message → might be media only
   if (!text && !isVoiceMessage(msg)) {
     // For sellers with media-only messages, still handle them
-    if (jid !== config.dealerPhone) {
+    if (!config.isDealer(jid)) {
       const messageType = Object.keys(msg.message || {})[0];
       const mediaTypes = ['imageMessage', 'videoMessage', 'documentMessage'];
       if (mediaTypes.includes(messageType)) {
@@ -62,7 +62,7 @@ async function routeMessage(msg) {
   }
 
   // Route to appropriate handler
-  if (jid === config.dealerPhone) {
+  if (config.isDealer(jid)) {
     console.log(`👤 Dealer: "${text}"`);
     await handleDealerMessage(jid, text);
   } else {

@@ -34,7 +34,7 @@ async function handleSellerMessage(msg, jid, text) {
   const sellerName = contact?.name || formatPhoneDisplay(jid);
   const mediaNote = mediaUrls.length > 0 ? ` [${mediaUrls.length} photo/video]` : '';
 
-  await sendText(config.dealerPhone,
+  await sendText(config.primaryDealer,
     `📩 *New response for Request #${active.id}*\n` +
     `From: ${sellerName}\n` +
     `${text || '(media only)'}${mediaNote}\n\n` +

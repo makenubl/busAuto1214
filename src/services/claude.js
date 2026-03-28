@@ -3,7 +3,7 @@ const config = require('../config');
 
 const client = new Anthropic({ apiKey: config.anthropicApiKey });
 
-const BOT_NAME = 'میکن';
+const BOT_NAME = 'مختار';
 const DEALER_NAME = 'سردار اختر عباس ماکن';
 const COMPANY_NAME = 'ماکن موٹرز';
 

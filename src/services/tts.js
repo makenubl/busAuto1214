@@ -15,8 +15,8 @@ function getOpenAI() {
  */
 async function textToSpeech(text) {
   const response = await getOpenAI().audio.speech.create({
-    model: 'tts-1',
-    voice: 'onyx', // Deep male voice — fits Mukhtar persona
+    model: 'tts-1-hd',
+    voice: 'ash', // Warm male voice — natural conversational tone for Mukhtar
     input: text,
     response_format: 'opus', // Opus format works best for WhatsApp voice notes
   });

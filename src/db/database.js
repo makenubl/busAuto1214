@@ -109,7 +109,17 @@ function removeDealer(jid) {
 
 function isDealer(jid) {
   const db = getDb();
-  return !!db.prepare('SELECT 1 FROM dealers WHERE jid = ?').get(jid);
+  // Check exact JID match
+  if (db.prepare('SELECT 1 FROM dealers WHERE jid = ?').get(jid)) return true;
+  // Also check if this is an alternate JID format for an existing dealer
+  // (WhatsApp uses both @s.whatsapp.net and @lid for the same person)
+  return false;
+}
+
+function addDealerAlias(jid) {
+  // Add an alternate JID for an existing dealer (auto-discovered)
+  const db = getDb();
+  return db.prepare('INSERT OR IGNORE INTO dealers (jid, name) VALUES (?, ?)').run(jid, null);
 }
 
 function getAllDealers() {
@@ -170,6 +180,7 @@ module.exports = {
   getResponsesForRequest,
   logMessage,
   addDealer,
+  addDealerAlias,
   removeDealer,
   isDealer,
   getAllDealers,

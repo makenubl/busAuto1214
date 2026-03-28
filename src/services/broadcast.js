@@ -9,7 +9,7 @@ async function broadcastToSellers(request) {
   const contacts = getAllContacts();
 
   if (contacts.length === 0) {
-    return { sent: 0, message: 'No seller contacts found. Add sellers first using: add seller <phone> <name>' };
+    return { sent: 0, message: 'کوئی سیلر نہیں ملا۔ پہلے سیلر شامل کریں: add seller <فون نمبر> <نام>' };
   }
 
   // Generate the broadcast message
@@ -38,7 +38,7 @@ async function broadcastToSellers(request) {
     sent,
     total: contacts.length,
     failed,
-    message: `✅ Sent to ${sent}/${contacts.length} sellers.${failed.length ? `\n❌ Failed: ${failed.join(', ')}` : ''}`,
+    message: `✅ ${sent}/${contacts.length} سیلرز کو بھیج دیا گیا۔${failed.length ? `\n❌ ناکام: ${failed.join('، ')}` : ''}`,
   };
 }
 

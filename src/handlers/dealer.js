@@ -11,11 +11,7 @@ const { normalizePhone, formatPhoneDisplay, isConfirmation, isNegation } = requi
 const { getSock } = require('../bot/connection');
 const config = require('../config');
 
-/**
- * Handle messages from the dealer.
- */
 async function handleDealerMessage(jid, text) {
-  // Quick check for simple confirmations/negations before calling Claude
   const draftRequest = getDraftRequest();
 
   if (draftRequest && isConfirmation(text)) {
@@ -26,7 +22,6 @@ async function handleDealerMessage(jid, text) {
     return await handleCancel(jid);
   }
 
-  // Use Claude to detect intent
   const { intent, data } = await detectIntent(text);
   console.log(`🧠 Dealer intent: ${intent}, data: ${data}`);
 
@@ -63,47 +58,43 @@ async function handleDealerMessage(jid, text) {
 }
 
 async function handleNewRequest(jid, text) {
-  // Check if there's already an active request
   const active = getActiveRequest();
   if (active) {
-    const parsed = JSON.parse(active.parsed || '{}');
     await sendText(jid,
-      `⚠️ You already have an active request (#${active.id}).\n` +
-      `Send "close" to close it first, or "results" to check responses.`
+      `⚠️ آپ کی ایک ریکوئسٹ (#${active.id}) پہلے سے ایکٹو ہے۔\n` +
+      `پہلے "بند" بھیجیں یا "نتائج" سے جوابات دیکھیں۔`
     );
     return;
   }
 
-  // Parse the requirement
   const parsed = await parseRequirement(text);
   const requestId = createRequest(text, parsed);
 
-  // Build confirmation message
   const details = [];
-  if (parsed.quantity) details.push(`• Quantity: ${parsed.quantity}`);
-  if (parsed.type) details.push(`• Type: ${parsed.type}`);
-  if (parsed.route) details.push(`• Route: ${parsed.route}`);
-  if (parsed.budget) details.push(`• Budget: ${parsed.budget}`);
-  if (parsed.condition) details.push(`• Condition: ${parsed.condition}`);
-  if (parsed.brand) details.push(`• Brand: ${parsed.brand}`);
-  if (parsed.other) details.push(`• Other: ${parsed.other}`);
+  if (parsed.quantity) details.push(`• تعداد: ${parsed.quantity}`);
+  if (parsed.type) details.push(`• قسم: ${parsed.type}`);
+  if (parsed.route) details.push(`• روٹ: ${parsed.route}`);
+  if (parsed.budget) details.push(`• بجٹ: ${parsed.budget}`);
+  if (parsed.condition) details.push(`• حالت: ${parsed.condition}`);
+  if (parsed.brand) details.push(`• برانڈ: ${parsed.brand}`);
+  if (parsed.other) details.push(`• دیگر: ${parsed.other}`);
 
   const sellers = getAllContacts();
   await sendText(jid,
-    `📋 *Request #${requestId}*\n\n` +
+    `📋 *ریکوئسٹ نمبر ${requestId}*\n\n` +
     `${details.join('\n')}\n\n` +
-    `Will send to *${sellers.length} sellers*.\n\n` +
-    `Reply *YES* to broadcast, or send corrections.`
+    `*${sellers.length} سیلرز* کو بھیجا جائے گا۔\n\n` +
+    `تصدیق کے لیے *ہاں* بھیجیں، یا تبدیلی بھیجیں۔`
   );
 }
 
 async function handleConfirm(jid, draftRequest) {
   if (!draftRequest) {
-    await sendText(jid, 'No pending request to confirm. Send a new buyer requirement.');
+    await sendText(jid, 'کوئی زیرِ التوا ریکوئسٹ نہیں ہے۔ نئی ضرورت بھیجیں۔');
     return;
   }
 
-  await sendText(jid, '📤 Broadcasting to sellers...');
+  await sendText(jid, '📤 سیلرز کو بھیجا جا رہا ہے...');
   const result = await broadcastToSellers(draftRequest);
   await sendText(jid, result.message);
 }
@@ -112,22 +103,22 @@ async function handleCancel(jid) {
   const draft = getDraftRequest();
   if (draft) {
     closeRequest(draft.id);
-    await sendText(jid, '❌ Request cancelled.');
+    await sendText(jid, '❌ ریکوئسٹ منسوخ کر دی گئی۔');
   } else {
-    await sendText(jid, 'Nothing to cancel.');
+    await sendText(jid, 'منسوخ کرنے کے لیے کوئی ریکوئسٹ نہیں ہے۔');
   }
 }
 
 async function handleCheckResults(jid) {
   const active = getActiveRequest();
   if (!active) {
-    await sendText(jid, 'No active request. Send a new buyer requirement to start.');
+    await sendText(jid, 'کوئی ایکٹو ریکوئسٹ نہیں ہے۔ نئی ضرورت بھیجیں۔');
     return;
   }
 
   const responses = getResponsesForRequest(active.id);
   if (responses.length === 0) {
-    await sendText(jid, `Request #${active.id} — No responses yet. Sellers have been notified.`);
+    await sendText(jid, `ریکوئسٹ #${active.id} — ابھی تک کوئی جواب نہیں آیا۔ سیلرز کو پیغام بھیجا جا چکا ہے۔`);
     return;
   }
 
@@ -137,46 +128,45 @@ async function handleCheckResults(jid) {
 }
 
 async function handleAddSeller(jid, text, data) {
-  // Try to extract phone and name from the message
   const match = text.match(/(\+?[\d]{10,13})\s*(.*)/);
   if (!match && data) {
     const dataMatch = data.match(/(\+?[\d]{10,13})\s*(.*)/);
     if (dataMatch) {
       const phone = normalizePhone(dataMatch[1]);
-      const name = dataMatch[2].trim() || 'Unknown';
+      const name = dataMatch[2].trim() || 'نامعلوم';
       addContact(phone, name, null, null);
-      await sendText(jid, `✅ Added seller: ${name} (${formatPhoneDisplay(phone)})`);
+      await sendText(jid, `✅ سیلر شامل کر دیا گیا: ${name} (${formatPhoneDisplay(phone)})`);
       return;
     }
   }
 
   if (match) {
     const phone = normalizePhone(match[1]);
-    const name = match[2].trim() || 'Unknown';
+    const name = match[2].trim() || 'نامعلوم';
     addContact(phone, name, null, null);
-    await sendText(jid, `✅ Added seller: ${name} (${formatPhoneDisplay(phone)})`);
+    await sendText(jid, `✅ سیلر شامل کر دیا گیا: ${name} (${formatPhoneDisplay(phone)})`);
   } else {
-    await sendText(jid, '❓ Format: add seller <phone> <name>\nExample: add seller 03001234567 Ahmed');
+    await sendText(jid, '❓ طریقہ: سیلر شامل کریں <فون نمبر> <نام>\nمثال: add seller 03001234567 احمد');
   }
 }
 
 async function handleListSellers(jid) {
   const contacts = getAllContacts();
   if (contacts.length === 0) {
-    await sendText(jid, 'No sellers added yet.\nUse: add seller <phone> <name>');
+    await sendText(jid, 'ابھی تک کوئی سیلر شامل نہیں ہے۔\nاستعمال: add seller <فون نمبر> <نام>');
     return;
   }
 
   const list = contacts.map((c, i) =>
-    `${i + 1}. ${c.name || 'Unknown'} — ${formatPhoneDisplay(c.phone)}${c.location ? ' (' + c.location + ')' : ''}`
+    `${i + 1}. ${c.name || 'نامعلوم'} — ${formatPhoneDisplay(c.phone)}${c.location ? ' (' + c.location + ')' : ''}`
   ).join('\n');
 
-  await sendText(jid, `📒 *Seller Contacts (${contacts.length}):*\n\n${list}`);
+  await sendText(jid, `📒 *سیلرز کی فہرست (${contacts.length}):*\n\n${list}`);
 }
 
 async function handleRemoveSeller(jid, data) {
   if (!data) {
-    await sendText(jid, '❓ Format: remove <phone>\nExample: remove 03001234567');
+    await sendText(jid, '❓ طریقہ: remove <فون نمبر>\nمثال: remove 03001234567');
     return;
   }
 
@@ -184,9 +174,9 @@ async function handleRemoveSeller(jid, data) {
   const result = removeContact(phone);
 
   if (result.changes > 0) {
-    await sendText(jid, `✅ Removed seller ${formatPhoneDisplay(phone)}`);
+    await sendText(jid, `✅ سیلر ہٹا دیا گیا: ${formatPhoneDisplay(phone)}`);
   } else {
-    await sendText(jid, `❌ Seller ${formatPhoneDisplay(phone)} not found.`);
+    await sendText(jid, `❌ سیلر ${formatPhoneDisplay(phone)} نہیں ملا۔`);
   }
 }
 
@@ -194,16 +184,16 @@ async function handleCloseRequest(jid) {
   const active = getActiveRequest();
   if (active) {
     closeRequest(active.id);
-    await sendText(jid, `✅ Request #${active.id} closed.`);
+    await sendText(jid, `✅ ریکوئسٹ #${active.id} بند کر دی گئی۔`);
   } else {
-    await sendText(jid, 'No active request to close.');
+    await sendText(jid, 'کوئی ایکٹو ریکوئسٹ نہیں ہے۔');
   }
 }
 
 async function handleDetail(jid, data) {
   const active = getActiveRequest();
   if (!active) {
-    await sendText(jid, 'No active request.');
+    await sendText(jid, 'کوئی ایکٹو ریکوئسٹ نہیں ہے۔');
     return;
   }
 
@@ -211,20 +201,19 @@ async function handleDetail(jid, data) {
   const index = parseInt(data) - 1;
 
   if (isNaN(index) || index < 0 || index >= responses.length) {
-    await sendText(jid, `Invalid number. Choose 1 to ${responses.length}.`);
+    await sendText(jid, `غلط نمبر۔ 1 سے ${responses.length} تک کا نمبر بھیجیں۔`);
     return;
   }
 
   const r = responses[index];
   const mediaUrls = JSON.parse(r.media_urls || '[]');
 
-  let detail = `📄 *Details from ${r.seller_name || formatPhoneDisplay(r.seller_phone)}:*\n\n`;
-  detail += r.message_text || '(no text)';
-  detail += `\n\n📎 ${mediaUrls.length} media file(s)`;
+  let detail = `📄 *${r.seller_name || formatPhoneDisplay(r.seller_phone)} کی تفصیلات:*\n\n`;
+  detail += r.message_text || '(کوئی متن نہیں)';
+  detail += `\n\n📎 ${mediaUrls.length} میڈیا فائل(یں)`;
 
   await sendText(jid, detail);
 
-  // Forward stored media if available
   if (mediaUrls.length > 0) {
     const { forwardMedia } = require('../bot/sender');
     const fs = require('fs');
@@ -244,12 +233,11 @@ async function handleDetail(jid, data) {
 }
 
 async function handleInviteDealer(jid, text, data) {
-  // Extract phone number from message or data
   const source = data || text;
   const match = source.match(/(\+?[\d]{10,13})/);
 
   if (!match) {
-    await sendText(jid, '❓ Format: add dealer 03001234567\nExample: add dealer 03020556472');
+    await sendText(jid, '❓ طریقہ: add dealer 03001234567');
     return;
   }
 
@@ -257,39 +245,35 @@ async function handleInviteDealer(jid, text, data) {
   const sock = getSock();
 
   try {
-    // Look up the actual WhatsApp JID for this number
     const [result] = await sock.onWhatsApp(phone.replace('@s.whatsapp.net', ''));
 
     if (!result || !result.exists) {
-      await sendText(jid, `❌ ${formatPhoneDisplay(phone)} is not on WhatsApp.`);
+      await sendText(jid, `❌ ${formatPhoneDisplay(phone)} واٹس ایپ پر نہیں ہے۔`);
       return;
     }
 
     const dealerJid = result.jid;
     addDealer(dealerJid, null);
 
-    // Notify the new dealer
-    await sendText(dealerJid, '✅ You have been added as a dealer for Bus Dealer Assistant. Send "help" to see available commands.');
-
-    await sendText(jid, `✅ Added dealer: ${formatPhoneDisplay(phone)}`);
+    await sendText(dealerJid, '✅ آپ کو بس ڈیلر اسسٹنٹ میں ڈیلر کے طور پر شامل کر لیا گیا ہے۔ کمانڈز دیکھنے کے لیے "مدد" بھیجیں۔');
+    await sendText(jid, `✅ ڈیلر شامل کر دیا گیا: ${formatPhoneDisplay(phone)}`);
   } catch (err) {
     console.error('Failed to add dealer:', err.message);
-    await sendText(jid, `❌ Failed to add dealer. Error: ${err.message}`);
+    await sendText(jid, `❌ ڈیلر شامل نہیں ہو سکا۔ غلطی: ${err.message}`);
   }
 }
 
 async function handleListDealers(jid) {
   const dealers = getAllDealers();
   const list = dealers.map((d, i) =>
-    `${i + 1}. ${d.name || 'Unknown'} — ${d.jid}`
+    `${i + 1}. ${d.name || 'نامعلوم'} — ${d.jid}`
   ).join('\n');
-  await sendText(jid, `👤 *Dealers (${dealers.length}):*\n\n${list}`);
+  await sendText(jid, `👤 *ڈیلرز (${dealers.length}):*\n\n${list}`);
 }
 
 async function handleRemoveDealer(jid, data) {
-  // Prevent removing yourself
   if (!data) {
-    await sendText(jid, '❓ Send: remove dealer <number from list>\nUse "list dealers" first.');
+    await sendText(jid, '❓ طریقہ: remove dealer <نمبر>\nپہلے "list dealers" بھیجیں۔');
     return;
   }
 
@@ -297,36 +281,36 @@ async function handleRemoveDealer(jid, data) {
   const index = parseInt(data) - 1;
 
   if (isNaN(index) || index < 0 || index >= dealers.length) {
-    await sendText(jid, `Invalid number. Choose 1 to ${dealers.length}.`);
+    await sendText(jid, `غلط نمبر۔ 1 سے ${dealers.length} تک کا نمبر بھیجیں۔`);
     return;
   }
 
   const target = dealers[index];
   if (target.jid === jid) {
-    await sendText(jid, '❌ You cannot remove yourself.');
+    await sendText(jid, '❌ آپ خود کو نہیں ہٹا سکتے۔');
     return;
   }
 
   removeDealer(target.jid);
-  await sendText(jid, `✅ Removed dealer: ${target.name || target.jid}`);
+  await sendText(jid, `✅ ڈیلر ہٹا دیا گیا: ${target.name || target.jid}`);
 }
 
 async function handleHelp(jid) {
   await sendText(jid,
-    `🚌 *Bus Dealer Assistant*\n\n` +
-    `Send me a buyer's requirement (text or voice) and I'll broadcast it to your sellers.\n\n` +
-    `*Commands:*\n` +
-    `• Send a requirement → I'll parse and confirm\n` +
-    `• *YES* → Broadcast to sellers\n` +
-    `• *results* → See seller responses\n` +
-    `• *1, 2, 3...* → Get full details from a seller\n` +
-    `• *close* → Close current request\n` +
-    `• *add seller 03xx Name* → Add a seller\n` +
-    `• *list sellers* → See all sellers\n` +
-    `• *remove 03xx* → Remove a seller\n` +
-    `• *add dealer 03xx* → Add a new dealer\n` +
-    `• *list dealers* → See all dealers\n` +
-    `• *help* → Show this message`
+    `🚌 *مختار — منشی ماکن موٹرز*\n\n` +
+    `السلام علیکم! میں مختار ہوں، سردار اختر عباس ماکن کا منشی۔\nخریدار کی ضرورت بھیجیں (ٹیکسٹ یا وائس نوٹ) اور میں آپ کے سیلرز کو بھیج دوں گا۔\n\n` +
+    `*کمانڈز:*\n` +
+    `• ضرورت بھیجیں → میں سمجھ کر تصدیق کروں گا\n` +
+    `• *ہاں* → سیلرز کو بھیجیں\n` +
+    `• *نتائج* → سیلرز کے جوابات دیکھیں\n` +
+    `• *1، 2، 3...* → کسی سیلر کی مکمل تفصیلات\n` +
+    `• *بند* → موجودہ ریکوئسٹ بند کریں\n` +
+    `• *add seller 03xx نام* → سیلر شامل کریں\n` +
+    `• *list sellers* → سیلرز کی فہرست\n` +
+    `• *remove 03xx* → سیلر ہٹائیں\n` +
+    `• *add dealer 03xx* → نیا ڈیلر شامل کریں\n` +
+    `• *list dealers* → ڈیلرز کی فہرست\n` +
+    `• *مدد* → یہ پیغام دکھائیں`
   );
 }
 

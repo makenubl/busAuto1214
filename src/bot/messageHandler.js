@@ -39,7 +39,7 @@ async function routeMessage(msg) {
       text = await transcribeVoiceMessage(msg);
     } catch (err) {
       console.error('Voice transcription failed:', err.message);
-      await sendText(jid, '❌ Could not transcribe voice message. Please send as text.');
+      await sendText(jid, '❌ وائس نوٹ سمجھ نہیں آئی۔ براہ کرم ٹیکسٹ میں بھیجیں۔');
       return;
     }
   }

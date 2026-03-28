@@ -282,6 +282,8 @@ Actions available:
 - "add_dealer" — add a new dealer (extract: phone)
 - "list_dealers" — show dealer list
 - "close_request" — close the active request
+- "send_message" — dealer wants to send a message to someone (extract: phone, messageText)
+- "send_inventory_to" — dealer wants to send bus details/photos to someone (extract: phone, inventoryId or searchQuery)
 - "show_inventory" — dealer wants to see available buses in inventory (extract searchQuery if specific)
 - "show_inventory_detail" — dealer wants to see photos/details of specific inventory item (extract detailNumber)
 - "mark_sold" — mark a bus as sold (extract inventoryId)
@@ -302,6 +304,7 @@ Respond with ONLY a JSON object:
     "condition": "<if new_request>",
     "brand": "<if new_request>",
     "detailNumber": <if requesting detail of specific seller or inventory item>,
+    "messageText": "<text to send if send_message>",
     "searchQuery": "<if searching inventory>",
     "inventoryId": <if marking sold>,
     "other": "<any other relevant data>"

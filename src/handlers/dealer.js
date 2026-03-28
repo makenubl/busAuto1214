@@ -12,6 +12,7 @@ const {
 } = require('../db/database');
 const { normalizePhone, formatPhoneDisplay } = require('../utils/helpers');
 const { getSock } = require('../bot/connection');
+const COMPANY_NAME = 'میکن موٹرز';
 
 /**
  * Smart conversational dealer handler.
@@ -170,6 +171,54 @@ async function executeAction(jid, action, data, response) {
     case 'close_request': {
       const active = getActiveRequest();
       if (active) closeRequest(active.id);
+      break;
+    }
+
+    case 'send_message': {
+      if (data.phone && data.messageText) {
+        const phone = normalizePhone(data.phone);
+        try {
+          await sendText(phone, data.messageText);
+          console.log(`📤 Message sent to ${phone} on dealer's behalf`);
+        } catch (err) {
+          console.error('Send message failed:', err.message);
+        }
+      }
+      break;
+    }
+
+    case 'send_inventory_to': {
+      if (data.phone) {
+        const phone = normalizePhone(data.phone);
+        const items = data.searchQuery ? searchInventory(data.searchQuery) : getAvailableInventory();
+        if (items.length > 0) {
+          let msg = `السلام علیکم! ${COMPANY_NAME} کی طرف سے۔\n\nدستیاب بسیں:\n\n`;
+          items.slice(0, 5).forEach((item, i) => {
+            msg += `${i + 1}. ${item.description?.substring(0, 100) || 'تفصیلات'}\n`;
+          });
+          msg += `\nمزید معلومات کے لیے رابطہ کریں۔`;
+          await sendText(phone, msg);
+
+          // Send photos too
+          const { forwardMedia } = require('../bot/sender');
+          const fs = require('fs');
+          for (const item of items.slice(0, 3)) {
+            const mediaPaths = JSON.parse(item.media_paths || '[]');
+            for (const mediaPath of mediaPaths.slice(0, 2)) {
+              try {
+                if (fs.existsSync(mediaPath)) {
+                  const buffer = fs.readFileSync(mediaPath);
+                  const ext = mediaPath.split('.').pop().toLowerCase();
+                  const mimeMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', mp4: 'video/mp4' };
+                  await forwardMedia(phone, buffer, mimeMap[ext] || 'application/octet-stream', '');
+                }
+              } catch (err) {
+                console.error('Media forward failed:', err.message);
+              }
+            }
+          }
+        }
+      }
       break;
     }
 

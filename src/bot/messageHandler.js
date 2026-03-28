@@ -1,8 +1,9 @@
 const { handleDealerMessage } = require('../handlers/dealer');
 const { handleSellerMessage } = require('../handlers/seller');
 const { transcribeVoiceMessage } = require('../services/whisper');
-const { logMessage, isDealer, useInvite, addDealer } = require('../db/database');
+const { logMessage, isDealer, useInvite, addDealer, addContact } = require('../db/database');
 const { sendText } = require('./sender');
+const { normalizePhone, formatPhoneDisplay } = require('../utils/helpers');
 
 /**
  * Extract text content from a message.
@@ -23,6 +24,25 @@ function isVoiceMessage(msg) {
 }
 
 /**
+ * Extract contact info from a vCard message.
+ */
+function extractVCard(msg) {
+  const vcard = msg.message?.contactMessage?.vcard || msg.message?.contactsArrayMessage?.contacts?.[0]?.vcard;
+  if (!vcard) return null;
+
+  const nameMatch = vcard.match(/FN:(.*)/);
+  const telMatch = vcard.match(/TEL[^:]*:([\d+\s-]+)/);
+
+  if (telMatch) {
+    return {
+      name: nameMatch ? nameMatch[1].trim() : 'نامعلوم',
+      phone: telMatch[1].replace(/[\s-]/g, '').trim(),
+    };
+  }
+  return null;
+}
+
+/**
  * Main message router — dispatches to dealer or seller handler.
  */
 async function routeMessage(msg) {
@@ -31,6 +51,16 @@ async function routeMessage(msg) {
 
   // Log incoming message
   logMessage(jid, 'bot', text || '[media]', null, 'incoming');
+
+  // Handle contact card (vCard) — dealer shares a contact → add as seller
+  const vcard = extractVCard(msg);
+  if (vcard && isDealer(jid)) {
+    const phone = normalizePhone(vcard.phone);
+    addContact(phone, vcard.name, null, null);
+    await sendText(jid, `✅ سیلر شامل کر دیا گیا: ${vcard.name} (${formatPhoneDisplay(phone)})`);
+    console.log(`📇 Contact card → seller added: ${vcard.name} ${vcard.phone}`);
+    return;
+  }
 
   // Handle voice messages — transcribe first
   if (isVoiceMessage(msg)) {

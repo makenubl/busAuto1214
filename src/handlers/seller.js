@@ -1,6 +1,6 @@
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const { sendText } = require('../bot/sender');
-const { getActiveRequest, addResponse, getContactByPhone, getAllDealers, getProfile, upsertProfile, getChatHistory } = require('../db/database');
+const { getActiveRequest, addResponse, getContactByPhone, getAllDealers, getProfile, upsertProfile, getChatHistory, addInventoryItem, addMediaToInventory, getLatestInventoryForSeller } = require('../db/database');
 const { formatPhoneDisplay } = require('../utils/helpers');
 const { handlePublicMessage } = require('../services/claude');
 const fs = require('fs');
@@ -49,8 +49,19 @@ async function handleSellerMessage(msg, jid, text) {
       phone_display: displayPhone,
     });
   } else {
-    // At minimum update last interaction
     upsertProfile(jid, { phone_display: displayPhone });
+  }
+
+  // If selling inquiry, save to inventory
+  if (reply.type === 'selling' && reply.inventoryData) {
+    const invId = addInventoryItem(jid, reply.profileUpdate?.name || displayPhone, text, reply.inventoryData, []);
+    // Attach any media sent with this message
+    const mediaUrls = await downloadSellerMedia(msg);
+    for (const mediaPath of mediaUrls) {
+      addMediaToInventory(invId, mediaPath);
+    }
+    console.log(`📦 Inventory item #${invId} added from ${displayPhone}`);
+    return; // Already handled media, skip the media section below
   }
 
   // Notify dealers if it's an important message (buying/selling inquiry)

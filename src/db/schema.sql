@@ -40,6 +40,18 @@ CREATE TABLE IF NOT EXISTS dealer_invites (
   used INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS inventory (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  seller_jid TEXT,
+  seller_name TEXT,
+  description TEXT,
+  parsed_details TEXT DEFAULT '{}',
+  media_paths TEXT DEFAULT '[]',
+  status TEXT DEFAULT 'available' CHECK(status IN ('available', 'sold', 'expired')),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS contact_profiles (
   jid TEXT PRIMARY KEY,
   name TEXT,

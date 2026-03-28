@@ -95,6 +95,53 @@ function getResponsesForRequest(requestId) {
   ).all(requestId);
 }
 
+// --- Inventory ---
+
+function addInventoryItem(sellerJid, sellerName, description, parsedDetails, mediaPaths) {
+  const db = getDb();
+  const result = db.prepare(
+    'INSERT INTO inventory (seller_jid, seller_name, description, parsed_details, media_paths) VALUES (?, ?, ?, ?, ?)'
+  ).run(sellerJid, sellerName, description, JSON.stringify(parsedDetails || {}), JSON.stringify(mediaPaths || []));
+  return result.lastInsertRowid;
+}
+
+function addMediaToInventory(id, mediaPath) {
+  const db = getDb();
+  const item = db.prepare('SELECT media_paths FROM inventory WHERE id = ?').get(id);
+  if (item) {
+    const paths = JSON.parse(item.media_paths || '[]');
+    paths.push(mediaPath);
+    db.prepare("UPDATE inventory SET media_paths = ?, updated_at = datetime('now') WHERE id = ?").run(JSON.stringify(paths), id);
+  }
+}
+
+function getAvailableInventory() {
+  const db = getDb();
+  return db.prepare("SELECT * FROM inventory WHERE status = 'available' ORDER BY created_at DESC").all();
+}
+
+function searchInventory(query) {
+  const db = getDb();
+  return db.prepare(
+    "SELECT * FROM inventory WHERE status = 'available' AND (description LIKE ? OR parsed_details LIKE ?) ORDER BY created_at DESC"
+  ).all(`%${query}%`, `%${query}%`);
+}
+
+function getInventoryById(id) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM inventory WHERE id = ?').get(id);
+}
+
+function updateInventoryStatus(id, status) {
+  const db = getDb();
+  return db.prepare("UPDATE inventory SET status = ?, updated_at = datetime('now') WHERE id = ?").run(status, id);
+}
+
+function getLatestInventoryForSeller(sellerJid) {
+  const db = getDb();
+  return db.prepare("SELECT * FROM inventory WHERE seller_jid = ? AND status = 'available' ORDER BY created_at DESC LIMIT 1").get(sellerJid);
+}
+
 // --- Contact Profiles ---
 
 function getProfile(jid) {
@@ -220,6 +267,13 @@ module.exports = {
   addResponse,
   getResponsesForRequest,
   logMessage,
+  addInventoryItem,
+  addMediaToInventory,
+  getAvailableInventory,
+  searchInventory,
+  getInventoryById,
+  updateInventoryStatus,
+  getLatestInventoryForSeller,
   getProfile,
   upsertProfile,
   getChatHistory,

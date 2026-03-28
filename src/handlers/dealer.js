@@ -8,6 +8,7 @@ const {
   getResponsesForRequest,
   getAllDealers, removeDealer, addDealer,
   getChatHistory, getProfile, upsertProfile,
+  getAvailableInventory, searchInventory, getInventoryById, updateInventoryStatus,
 } = require('../db/database');
 const { normalizePhone, formatPhoneDisplay } = require('../utils/helpers');
 const { getSock } = require('../bot/connection');
@@ -27,12 +28,14 @@ async function handleDealerMessage(jid, text) {
   const dealers = getAllDealers();
   const responseCount = activeRequest ? getResponsesForRequest(activeRequest.id).length : 0;
 
+  const inventory = getAvailableInventory();
   const systemState = {
     activeRequest,
     draftRequest,
     sellerCount: sellers.length,
     dealerCount: dealers.length,
     responseCount,
+    inventoryCount: inventory.length,
   };
 
   // Let Claude handle the conversation
@@ -167,6 +170,56 @@ async function executeAction(jid, action, data, response) {
     case 'close_request': {
       const active = getActiveRequest();
       if (active) closeRequest(active.id);
+      break;
+    }
+
+    case 'show_inventory': {
+      const items = data.searchQuery ? searchInventory(data.searchQuery) : getAvailableInventory();
+      if (items.length > 0) {
+        let msg = `📦 *دستیاب بسیں (${items.length}):*\n\n`;
+        items.forEach((item, i) => {
+          const details = JSON.parse(item.parsed_details || '{}');
+          const mediaCount = JSON.parse(item.media_paths || '[]').length;
+          msg += `${i + 1}. ${item.seller_name} — ${item.description?.substring(0, 80) || 'تفصیلات نہیں'}`;
+          if (mediaCount > 0) msg += ` [${mediaCount} تصاویر]`;
+          msg += '\n';
+        });
+        msg += '\n📸 تصاویر دیکھنے کے لیے نمبر بھیجیں۔';
+        await sendText(jid, msg);
+      }
+      break;
+    }
+
+    case 'show_inventory_detail': {
+      const items = getAvailableInventory();
+      const idx = parseInt(data.detailNumber) - 1;
+      if (idx >= 0 && idx < items.length) {
+        const item = items[idx];
+        const mediaPaths = JSON.parse(item.media_paths || '[]');
+        if (mediaPaths.length > 0) {
+          const { forwardMedia } = require('../bot/sender');
+          const fs = require('fs');
+          for (const mediaPath of mediaPaths) {
+            try {
+              if (fs.existsSync(mediaPath)) {
+                const buffer = fs.readFileSync(mediaPath);
+                const ext = mediaPath.split('.').pop().toLowerCase();
+                const mimeMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', mp4: 'video/mp4' };
+                await forwardMedia(jid, buffer, mimeMap[ext] || 'application/octet-stream', `${item.seller_name} کی بس`);
+              }
+            } catch (err) {
+              console.error('Media forward failed:', err.message);
+            }
+          }
+        }
+      }
+      break;
+    }
+
+    case 'mark_sold': {
+      if (data.inventoryId) {
+        updateInventoryStatus(data.inventoryId, 'sold');
+      }
       break;
     }
 

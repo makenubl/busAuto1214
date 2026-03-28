@@ -210,7 +210,8 @@ Respond with ONLY a JSON object:
     "role": "<buyer|seller|businessman — use 'businessman' if they both buy and sell>",
     "summary": "<1-2 line Urdu summary: who they are, what buses they deal in, cities/routes, past deals — build on previous summary, don't replace it>",
     "tags": ["<bus types, routes, cities, brands they deal in>"]
-  }
+  },
+  "inventoryData": <if type is "selling", extract bus details as {"type": "AC/Non-AC", "brand": "Hino/Yutong/etc", "quantity": number, "price": "string", "condition": "new/used", "route": "string", "year": "string"}, else null>
 }`,
       },
     ],
@@ -257,6 +258,7 @@ You understand Urdu, Punjabi, Roman Urdu, and English. Always respond IN URDU sc
 کل سیلرز: ${systemState.sellerCount}
 کل ڈیلرز: ${systemState.dealerCount}
 ایکٹو ریکوئسٹ کے جوابات: ${systemState.responseCount}
+انوینٹری میں دستیاب بسیں: ${systemState.inventoryCount}
 
 == پوری گفتگو ==
 ${historyText}
@@ -280,6 +282,9 @@ Actions available:
 - "add_dealer" — add a new dealer (extract: phone)
 - "list_dealers" — show dealer list
 - "close_request" — close the active request
+- "show_inventory" — dealer wants to see available buses in inventory (extract searchQuery if specific)
+- "show_inventory_detail" — dealer wants to see photos/details of specific inventory item (extract detailNumber)
+- "mark_sold" — mark a bus as sold (extract inventoryId)
 - "help" — show available commands
 - "chat" — general conversation, advice, or questions — no system action needed
 
@@ -296,7 +301,9 @@ Respond with ONLY a JSON object:
     "budget": "<if new_request>",
     "condition": "<if new_request>",
     "brand": "<if new_request>",
-    "detailNumber": <if requesting detail of specific seller>,
+    "detailNumber": <if requesting detail of specific seller or inventory item>,
+    "searchQuery": "<if searching inventory>",
+    "inventoryId": <if marking sold>,
     "other": "<any other relevant data>"
   }
 }`,

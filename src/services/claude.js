@@ -3,9 +3,9 @@ const config = require('../config');
 
 const client = new Anthropic({ apiKey: config.anthropicApiKey });
 
-const BOT_NAME = 'مختار';
+const BOT_NAME = 'میکن';
 const DEALER_NAME = 'سردار اختر عباس ماکن';
-const COMPANY_NAME = 'ماکن موٹرز';
+const COMPANY_NAME = 'میکن موٹرز';
 
 async function parseRequirement(text) {
   const response = await client.messages.create({

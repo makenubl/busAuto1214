@@ -1,4 +1,5 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 const path = require('path');
 
@@ -16,7 +17,7 @@ async function connectToWhatsApp() {
     version,
     auth: state,
     logger,
-    printQRInTerminal: true,
+    // QR handled manually below
     browser: ['BusDealer Bot', 'Chrome', '1.0.0'],
   });
 
@@ -26,7 +27,8 @@ async function connectToWhatsApp() {
   // Connection updates
   sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
     if (qr) {
-      console.log('\n📱 Scan the QR code above with WhatsApp to connect.\n');
+      console.log('\n📱 Scan this QR code with WhatsApp:\n');
+      qrcode.generate(qr, { small: true });
     }
 
     if (connection === 'close') {

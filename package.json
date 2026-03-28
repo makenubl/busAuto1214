@@ -13,6 +13,7 @@
     "better-sqlite3": "^11.7.0",
     "dotenv": "^16.4.7",
     "openai": "^4.77.0",
-    "pino": "^9.6.0"
+    "pino": "^9.6.0",
+    "qrcode-terminal": "^0.12.0"
   }
 }

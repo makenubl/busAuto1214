@@ -8,7 +8,7 @@ const {
   getResponsesForRequest,
   getAllDealers, removeDealer, addDealer,
   getChatHistory, getProfile, upsertProfile,
-  getAvailableInventory, searchInventory, getInventoryById, updateInventoryStatus,
+  getAvailableInventory, searchInventory, getInventoryById, getInventoryByRegNumber, updateInventoryStatus,
 } = require('../db/database');
 const { normalizePhone, formatPhoneDisplay } = require('../utils/helpers');
 const { getSock } = require('../bot/connection');
@@ -30,6 +30,16 @@ async function handleDealerMessage(jid, text) {
   const responseCount = activeRequest ? getResponsesForRequest(activeRequest.id).length : 0;
 
   const inventory = getAvailableInventory();
+  let inventoryList = '';
+  if (inventory.length > 0) {
+    inventoryList = '\n== انوینٹری کی تفصیلات ==\n' + inventory.map((item, i) => {
+      const details = JSON.parse(item.parsed_details || '{}');
+      const mediaCount = JSON.parse(item.media_paths || '[]').length;
+      const regNo = item.registration_number ? `[${item.registration_number}]` : '[رجسٹریشن نمبر نہیں]';
+      return `${i + 1}. ${regNo} ${item.seller_name} — ${item.description?.substring(0, 100) || 'تفصیلات نہیں'} | تصاویر: ${mediaCount}`;
+    }).join('\n');
+  }
+
   const systemState = {
     activeRequest,
     draftRequest,
@@ -37,6 +47,7 @@ async function handleDealerMessage(jid, text) {
     dealerCount: dealers.length,
     responseCount,
     inventoryCount: inventory.length,
+    inventoryList,
   };
 
   // Let Claude handle the conversation
@@ -190,21 +201,40 @@ async function executeAction(jid, action, data, response) {
     case 'send_inventory_to': {
       if (data.phone) {
         const phone = normalizePhone(data.phone);
-        const items = data.searchQuery ? searchInventory(data.searchQuery) : getAvailableInventory();
-        if (items.length > 0) {
-          let msg = `السلام علیکم! ${COMPANY_NAME} کی طرف سے۔\n\nدستیاب بسیں:\n\n`;
-          items.slice(0, 5).forEach((item, i) => {
-            msg += `${i + 1}. ${item.description?.substring(0, 100) || 'تفصیلات'}\n`;
-          });
-          msg += `\nمزید معلومات کے لیے رابطہ کریں۔`;
-          await sendText(phone, msg);
+        let items = [];
 
-          // Send photos too
-          const { forwardMedia } = require('../bot/sender');
-          const fs = require('fs');
-          for (const item of items.slice(0, 3)) {
+        // Specific inventory item by ID or registration number
+        if (data.inventoryId) {
+          const item = getInventoryById(data.inventoryId);
+          if (item) items = [item];
+        } else if (data.registrationNumber) {
+          const item = getInventoryByRegNumber(data.registrationNumber);
+          if (item) items = [item];
+        }
+        // By list number (1, 2, 3...)
+        else if (data.detailNumber) {
+          const allItems = getAvailableInventory();
+          const idx = parseInt(data.detailNumber) - 1;
+          if (idx >= 0 && idx < allItems.length) items = [allItems[idx]];
+        }
+        // By search
+        else if (data.searchQuery) {
+          items = searchInventory(data.searchQuery);
+        }
+        // All
+        else {
+          items = getAvailableInventory().slice(0, 5);
+        }
+
+        if (items.length > 0) {
+          for (const item of items) {
+            await sendText(phone, `السلام علیکم! ${COMPANY_NAME} کی طرف سے۔\n\n${item.description || 'بس دستیاب ہے'}\n\nمزید معلومات کے لیے رابطہ کریں۔`);
+
+            // Send photos
+            const { forwardMedia } = require('../bot/sender');
+            const fs = require('fs');
             const mediaPaths = JSON.parse(item.media_paths || '[]');
-            for (const mediaPath of mediaPaths.slice(0, 2)) {
+            for (const mediaPath of mediaPaths) {
               try {
                 if (fs.existsSync(mediaPath)) {
                   const buffer = fs.readFileSync(mediaPath);

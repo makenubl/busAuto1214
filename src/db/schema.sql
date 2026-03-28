@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS dealer_invites (
 
 CREATE TABLE IF NOT EXISTS inventory (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  registration_number TEXT,
   seller_jid TEXT,
   seller_name TEXT,
   description TEXT,

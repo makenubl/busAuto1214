@@ -99,10 +99,21 @@ function getResponsesForRequest(requestId) {
 
 function addInventoryItem(sellerJid, sellerName, description, parsedDetails, mediaPaths) {
   const db = getDb();
+  const regNo = parsedDetails?.registration_number || null;
   const result = db.prepare(
-    'INSERT INTO inventory (seller_jid, seller_name, description, parsed_details, media_paths) VALUES (?, ?, ?, ?, ?)'
-  ).run(sellerJid, sellerName, description, JSON.stringify(parsedDetails || {}), JSON.stringify(mediaPaths || []));
+    'INSERT INTO inventory (registration_number, seller_jid, seller_name, description, parsed_details, media_paths) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(regNo, sellerJid, sellerName, description, JSON.stringify(parsedDetails || {}), JSON.stringify(mediaPaths || []));
   return result.lastInsertRowid;
+}
+
+function getInventoryByRegNumber(regNumber) {
+  const db = getDb();
+  return db.prepare("SELECT * FROM inventory WHERE registration_number LIKE ? AND status = 'available'").get(`%${regNumber}%`);
+}
+
+function updateInventoryRegNumber(id, regNumber) {
+  const db = getDb();
+  return db.prepare("UPDATE inventory SET registration_number = ?, updated_at = datetime('now') WHERE id = ?").run(regNumber, id);
 }
 
 function addMediaToInventory(id, mediaPath) {
@@ -272,7 +283,9 @@ module.exports = {
   getAvailableInventory,
   searchInventory,
   getInventoryById,
+  getInventoryByRegNumber,
   updateInventoryStatus,
+  updateInventoryRegNumber,
   getLatestInventoryForSeller,
   getProfile,
   upsertProfile,

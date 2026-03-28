@@ -211,7 +211,7 @@ Respond with ONLY a JSON object:
     "summary": "<1-2 line Urdu summary: who they are, what buses they deal in, cities/routes, past deals — build on previous summary, don't replace it>",
     "tags": ["<bus types, routes, cities, brands they deal in>"]
   },
-  "inventoryData": <if type is "selling", extract bus details as {"type": "AC/Non-AC", "brand": "Hino/Yutong/etc", "quantity": number, "price": "string", "condition": "new/used", "route": "string", "year": "string"}, else null>
+  "inventoryData": <if type is "selling", extract bus details as {"registration_number": "e.g. LEA-1234 or null", "type": "AC/Non-AC", "brand": "Hino/Yutong/etc", "quantity": number, "price": "string", "condition": "new/used", "route": "string", "year": "string"}, else null>
 }`,
       },
     ],
@@ -259,6 +259,7 @@ You understand Urdu, Punjabi, Roman Urdu, and English. Always respond IN URDU sc
 کل ڈیلرز: ${systemState.dealerCount}
 ایکٹو ریکوئسٹ کے جوابات: ${systemState.responseCount}
 انوینٹری میں دستیاب بسیں: ${systemState.inventoryCount}
+${systemState.inventoryList || ''}
 
 == پوری گفتگو ==
 ${historyText}
@@ -307,6 +308,7 @@ Respond with ONLY a JSON object:
     "messageText": "<text to send if send_message>",
     "searchQuery": "<if searching inventory>",
     "inventoryId": <if marking sold>,
+    "registrationNumber": "<bus registration number like LEA-1234 if mentioned>",
     "other": "<any other relevant data>"
   }
 }`,

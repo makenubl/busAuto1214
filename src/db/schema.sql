@@ -53,6 +53,21 @@ CREATE TABLE IF NOT EXISTS inventory (
   updated_at TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS deals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  buyer_jid TEXT,
+  buyer_name TEXT,
+  seller_jid TEXT,
+  seller_name TEXT,
+  bus_registration TEXT,
+  description TEXT,
+  agreed_price TEXT,
+  status TEXT DEFAULT 'inquiry' CHECK(status IN ('inquiry', 'negotiation', 'agreed', 'payment_pending', 'completed', 'cancelled')),
+  notes TEXT DEFAULT '[]',
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS contact_profiles (
   jid TEXT PRIMARY KEY,
   name TEXT,

@@ -7,8 +7,9 @@ const {
   addContact, removeContact, getAllContacts,
   getResponsesForRequest,
   getAllDealers, removeDealer, addDealer,
-  getChatHistory, getProfile, upsertProfile,
+  getChatHistory, getProfile, upsertProfile, getAllProfiles,
   getAvailableInventory, searchInventory, getInventoryById, getInventoryByRegNumber, updateInventoryStatus,
+  createDeal, updateDealStatus, addDealNote, getActiveDeals, getDealById, getTodaySummary,
 } = require('../db/database');
 const { normalizePhone, formatPhoneDisplay } = require('../utils/helpers');
 const { getSock } = require('../bot/connection');
@@ -40,6 +41,14 @@ async function handleDealerMessage(jid, text) {
     }).join('\n');
   }
 
+  const activeDeals = getActiveDeals();
+  let dealsList = '';
+  if (activeDeals.length > 0) {
+    dealsList = '\n== ایکٹو ڈیلز ==\n' + activeDeals.map((d, i) =>
+      `${i + 1}. [ڈیل #${d.id}] ${d.buyer_name || '?'} ← ${d.seller_name || '?'} | ${d.bus_registration || 'بس نمبر نہیں'} | حالت: ${d.status} | قیمت: ${d.agreed_price || '?'}`
+    ).join('\n');
+  }
+
   const systemState = {
     activeRequest,
     draftRequest,
@@ -47,7 +56,9 @@ async function handleDealerMessage(jid, text) {
     dealerCount: dealers.length,
     responseCount,
     inventoryCount: inventory.length,
+    activeDealsCount: activeDeals.length,
     inventoryList,
+    dealsList,
   };
 
   // Let Claude handle the conversation
@@ -302,7 +313,74 @@ async function executeAction(jid, action, data, response) {
       break;
     }
 
-    // greeting, chat, list_sellers, list_dealers, help — response from Claude is enough
+    case 'create_deal': {
+      const dealId = createDeal({
+        buyer_name: data.buyer_name,
+        seller_name: data.seller_name,
+        bus_registration: data.bus_registration || data.registrationNumber,
+        description: data.description,
+        agreed_price: data.agreed_price,
+        status: data.newStatus || 'inquiry',
+      });
+      console.log(`📝 Deal #${dealId} created`);
+      break;
+    }
+
+    case 'update_deal': {
+      if (data.dealId) {
+        if (data.newStatus) updateDealStatus(data.dealId, data.newStatus);
+        if (data.note) addDealNote(data.dealId, data.note);
+      }
+      break;
+    }
+
+    case 'show_deals': {
+      const deals = getActiveDeals();
+      if (deals.length > 0) {
+        let msg = `📝 *ایکٹو ڈیلز (${deals.length}):*\n\n`;
+        deals.forEach((d, i) => {
+          msg += `${i + 1}. ${d.buyer_name || '?'} ← ${d.seller_name || '?'}\n`;
+          msg += `   بس: ${d.bus_registration || '?'} | حالت: ${d.status}\n`;
+          if (d.agreed_price) msg += `   قیمت: ${d.agreed_price}\n`;
+          msg += '\n';
+        });
+        await sendText(jid, msg);
+      }
+      break;
+    }
+
+    case 'summary': {
+      const stats = getTodaySummary();
+      const summaryMsg =
+        `📊 *آج کا خلاصہ:*\n\n` +
+        `📩 نئے پیغامات: ${stats.newMessages}\n` +
+        `📦 نئی بسیں انوینٹری میں: ${stats.newInventory}\n` +
+        `📝 ایکٹو ڈیلز: ${stats.activeDeals}\n` +
+        `🔍 ایکٹو ریکوئسٹس: ${stats.activeRequests}\n` +
+        `👥 کل سیلرز: ${stats.totalSellers}\n` +
+        `🚌 کل دستیاب بسیں: ${stats.totalInventory}`;
+      await sendText(jid, summaryMsg);
+      break;
+    }
+
+    case 'save_note': {
+      if (data.phone && data.noteText) {
+        const phone = normalizePhone(data.phone);
+        const profile = getProfile(phone);
+        const existingSummary = profile?.summary || '';
+        upsertProfile(phone, {
+          summary: existingSummary ? `${existingSummary} | ${data.noteText}` : data.noteText,
+          phone_display: formatPhoneDisplay(phone),
+        });
+      } else if (data.name && data.noteText) {
+        // Save note by name — search profiles
+        // For now just log it
+        console.log(`📝 Note about ${data.name}: ${data.noteText}`);
+      }
+      break;
+    }
+
+    // greeting, chat, followup, list_sellers, list_dealers, help — response from Claude is enough
     default:
       break;
   }

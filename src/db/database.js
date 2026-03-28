@@ -95,6 +95,59 @@ function getResponsesForRequest(requestId) {
   ).all(requestId);
 }
 
+// --- Deals ---
+
+function createDeal(data) {
+  const db = getDb();
+  const result = db.prepare(
+    'INSERT INTO deals (buyer_jid, buyer_name, seller_jid, seller_name, bus_registration, description, agreed_price, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(data.buyer_jid || null, data.buyer_name || null, data.seller_jid || null, data.seller_name || null, data.bus_registration || null, data.description || null, data.agreed_price || null, data.status || 'inquiry');
+  return result.lastInsertRowid;
+}
+
+function updateDealStatus(id, status) {
+  const db = getDb();
+  return db.prepare("UPDATE deals SET status = ?, updated_at = datetime('now') WHERE id = ?").run(status, id);
+}
+
+function addDealNote(id, note) {
+  const db = getDb();
+  const deal = db.prepare('SELECT notes FROM deals WHERE id = ?').get(id);
+  if (deal) {
+    const notes = JSON.parse(deal.notes || '[]');
+    notes.push({ text: note, time: new Date().toISOString() });
+    db.prepare("UPDATE deals SET notes = ?, updated_at = datetime('now') WHERE id = ?").run(JSON.stringify(notes), id);
+  }
+}
+
+function getActiveDeals() {
+  const db = getDb();
+  return db.prepare("SELECT * FROM deals WHERE status NOT IN ('completed', 'cancelled') ORDER BY updated_at DESC").all();
+}
+
+function getAllDeals() {
+  const db = getDb();
+  return db.prepare('SELECT * FROM deals ORDER BY created_at DESC LIMIT 50').all();
+}
+
+function getDealById(id) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM deals WHERE id = ?').get(id);
+}
+
+function getTodaySummary() {
+  const db = getDb();
+  const today = new Date().toISOString().split('T')[0];
+  return {
+    newMessages: db.prepare("SELECT COUNT(*) as count FROM messages_log WHERE timestamp >= ?").get(today).count,
+    newInventory: db.prepare("SELECT COUNT(*) as count FROM inventory WHERE created_at >= ?").get(today).count,
+    activeDeals: db.prepare("SELECT COUNT(*) as count FROM deals WHERE status NOT IN ('completed', 'cancelled')").get(today).count,
+    activeRequests: db.prepare("SELECT COUNT(*) as count FROM requests WHERE status = 'active'").get().count,
+    totalSellers: db.prepare("SELECT COUNT(*) as count FROM contacts").get().count,
+    totalInventory: db.prepare("SELECT COUNT(*) as count FROM inventory WHERE status = 'available'").get().count,
+  };
+}
+
 // --- Inventory ---
 
 function addInventoryItem(sellerJid, sellerName, description, parsedDetails, mediaPaths) {
@@ -278,6 +331,13 @@ module.exports = {
   addResponse,
   getResponsesForRequest,
   logMessage,
+  createDeal,
+  updateDealStatus,
+  addDealNote,
+  getActiveDeals,
+  getAllDeals,
+  getDealById,
+  getTodaySummary,
   addInventoryItem,
   addMediaToInventory,
   getAvailableInventory,

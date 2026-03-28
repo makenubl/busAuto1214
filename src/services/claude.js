@@ -154,9 +154,54 @@ Keep it concise. Respond with ONLY the message text in Urdu.`,
   return response.content[0].text.trim();
 }
 
+async function handlePublicMessage(text, jid, displayPhone) {
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 400,
+    messages: [
+      {
+        role: 'user',
+        content: `You are ${BOT_NAME} (مختار), the munshi (assistant) of ${DEALER_NAME} from ${COMPANY_NAME}. You handle bus dealing inquiries on WhatsApp.
+
+A person (${displayPhone}) sent this message:
+"${text}"
+
+Respond naturally IN URDU. You are a professional, warm, and helpful munshi.
+
+Rules:
+- If they say salam/hello → greet them warmly, introduce yourself, ask how you can help
+- If they want to BUY buses → ask for details (quantity, type AC/Non-AC, route, budget) and tell them you'll check with your network
+- If they want to SELL buses → ask for details (quantity, type, condition, price, photos) and tell them you'll share with interested buyers
+- If they ask about availability → tell them to share their requirement and you'll check
+- If it's a general question about buses/transport → answer helpfully
+- If it's unrelated to buses → politely redirect to bus dealing
+
+Also classify this message. Respond with ONLY a JSON object:
+{
+  "response": "<your Urdu response text>",
+  "type": "<greeting|buying|selling|query|unrelated>",
+  "notifyDealer": <true if buying/selling inquiry, false otherwise>
+}`,
+      },
+    ],
+  });
+
+  const content = response.content[0].text.trim();
+  try {
+    return JSON.parse(content);
+  } catch {
+    return {
+      response: 'وعلیکم السلام! میں مختار ہوں، میکن موٹرز کا منشی۔ بتائیں کیا خدمت کر سکتا ہوں؟',
+      type: 'greeting',
+      notifyDealer: false,
+    };
+  }
+}
+
 module.exports = {
   parseRequirement,
   detectIntent,
   generateBroadcastMessage,
   summarizeResponses,
+  handlePublicMessage,
 };

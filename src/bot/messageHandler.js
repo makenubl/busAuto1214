@@ -42,10 +42,26 @@ function extractVCard(msg) {
   return null;
 }
 
+// Deduplication — prevent processing same message twice
+const recentMessages = new Set();
+function isDuplicate(msgId) {
+  if (recentMessages.has(msgId)) return true;
+  recentMessages.add(msgId);
+  // Clean up after 60 seconds
+  setTimeout(() => recentMessages.delete(msgId), 60000);
+  return false;
+}
+
 /**
  * Main message router — dispatches to dealer or seller handler.
  */
 async function routeMessage(msg) {
+  const msgId = msg.key.id;
+  if (isDuplicate(msgId)) {
+    console.log(`⏭️ Duplicate message ${msgId}, skipping`);
+    return;
+  }
+
   const jid = msg.key.remoteJid;
   let text = extractText(msg);
 

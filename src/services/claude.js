@@ -3,8 +3,8 @@ const config = require('../config');
 
 const client = new Anthropic({ apiKey: config.anthropicApiKey });
 
-const BOT_NAME = 'میکن';
-const DEALER_NAME = 'سردار اختر عباس ماکن';
+const BOT_NAME = 'مختار';
+const DEALER_NAME = 'سردار اختر عباس میکن';
 const COMPANY_NAME = 'میکن موٹرز';
 
 async function parseRequirement(text) {

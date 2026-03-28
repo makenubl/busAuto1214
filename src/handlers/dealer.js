@@ -50,6 +50,8 @@ async function handleDealerMessage(jid, text) {
       return await handleListDealers(jid);
     case 'remove_dealer':
       return await handleRemoveDealer(jid, data);
+    case 'greeting':
+      return await handleGreeting(jid);
     case 'help':
       return await handleHelp(jid);
     default:
@@ -293,6 +295,14 @@ async function handleRemoveDealer(jid, data) {
 
   removeDealer(target.jid);
   await sendText(jid, `✅ ڈیلر ہٹا دیا گیا: ${target.name || target.jid}`);
+}
+
+async function handleGreeting(jid) {
+  await sendText(jid,
+    `وعلیکم السلام! 🚌\n\n` +
+    `میں مختار ہوں، سردار اختر عباس میکن کا منشی، میکن موٹرز سے۔\n\n` +
+    `بتائیں کیا خدمت کر سکتا ہوں؟ خریدار کی ضرورت بھیجیں یا "مدد" بھیجیں۔`
+  );
 }
 
 async function handleHelp(jid) {

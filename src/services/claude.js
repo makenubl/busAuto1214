@@ -56,6 +56,7 @@ The message may be in Urdu, Roman Urdu, or English.
 Message: "${text}"
 
 Possible intents:
+- "greeting" — dealer is greeting (salam, hello, hi, السلام علیکم, assalam o alaikum, kya haal hai)
 - "new_request" — dealer is describing a buyer's bus requirement
 - "confirm" — dealer is confirming/approving something (yes, haan, bhejo, ok, ہاں)
 - "cancel" — dealer is canceling (no, nahi, cancel, ruko, نہیں)

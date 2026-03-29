@@ -52,14 +52,14 @@ async function forwardMedia(jid, mediaBuffer, mimetype, caption) {
 /**
  * Send a voice message (audio buffer as ptt)
  */
-async function sendVoice(jid, audioBuffer, mimetype) {
+async function sendVoice(jid, audioBuffer) {
   const sock = getSock();
   if (!sock) throw new Error('WhatsApp not connected');
 
+  // Send as regular audio message (not PTT) — more compatible with MP3
   await sock.sendMessage(jid, {
     audio: audioBuffer,
-    mimetype: mimetype || 'audio/mpeg',
-    ptt: true, // Push-to-talk = voice note
+    mimetype: 'audio/mpeg',
   });
   logMessage('bot', jid, '[voice]', null, 'outgoing');
 }

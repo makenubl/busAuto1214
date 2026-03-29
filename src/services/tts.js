@@ -8,7 +8,7 @@ function getOpenAI() {
 }
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'kLuXkg0zRFuSas1JFmMT'; // Sohaib Jasra — natural Hindi/Urdu male
+const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'onwK4e9ZLuTAKqWW03F9'; // Daniel — default multilingual male (works on free plan)
 
 /**
  * Convert text to speech using ElevenLabs (primary) or OpenAI (fallback).
